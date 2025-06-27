@@ -10,8 +10,20 @@ class PhotoApp {
         this.flipH = false;
         this.flipV = false;
         this.currentFilter = 'none';
+        this.cvRouter = null;
         
+        this.initializeDynamsoft();
         this.initializeEventListeners();
+    }
+
+    async initializeDynamsoft() {
+        try {
+            await Dynamsoft.License.LicenseManager.initLicense("DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0MjAxNjI2LU1UQTBNakF4TmpJMkxYZGxZaTFVY21saGJGQnliMm8iLCJtYWluU2VydmVyVVJMIjoiaHR0cHM6Ly9tZGxzLmR5bmFtc29mdG9ubGluZS5jb20iLCJvcmdhbml6YXRpb25JRCI6IjEwNDIwMTYyNiIsInN0YW5kYnlTZXJ2ZXJVUkwiOiJodHRwczovL3NkbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsImNoZWNrQ29kZSI6OTY0MDI1ODU3fQ==");
+            this.cvRouter = await Dynamsoft.CVR.CaptureVisionRouter.createInstance();
+            console.log('Dynamsoft Barcode Reader initialized successfully');
+        } catch (error) {
+            console.error('Error initializing Dynamsoft:', error);
+        }
     }
 
     initializeEventListeners() {
@@ -36,6 +48,10 @@ class PhotoApp {
         // Actions
         document.getElementById('downloadPhoto').addEventListener('click', () => this.downloadPhoto());
         document.getElementById('newPhoto').addEventListener('click', () => this.newPhoto());
+        
+        // Barcode scanning
+        document.getElementById('scanBarcode').addEventListener('click', () => this.scanBarcode());
+        document.getElementById('clearResults').addEventListener('click', () => this.clearBarcodeResults());
     }
 
     async startCamera() {
@@ -262,6 +278,101 @@ class PhotoApp {
         // Reset filter buttons
         document.querySelectorAll('.btn-filter').forEach(btn => btn.classList.remove('active'));
         document.getElementById('filterNone').classList.add('active');
+    }
+
+    async scanBarcode() {
+        if (!this.capturedPhoto.src) {
+            alert('Najpierw zrób zdjęcie!');
+            return;
+        }
+
+        if (!this.cvRouter) {
+            alert('Barcode Reader nie jest jeszcze gotowy. Spróbuj ponownie za chwilę.');
+            return;
+        }
+
+        try {
+            const scanBtn = document.getElementById('scanBarcode');
+            const originalText = scanBtn.innerHTML;
+            scanBtn.innerHTML = '<span class="loading"></span>Skanowanie...';
+            scanBtn.disabled = true;
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = async () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                try {
+                    const results = await this.cvRouter.capture(canvas, 'ReadSingleBarcode');
+                    this.displayBarcodeResults(results);
+                } catch (error) {
+                    console.error('Scanning error:', error);
+                    alert('Błąd podczas skanowania: ' + error.message);
+                } finally {
+                    scanBtn.innerHTML = originalText;
+                    scanBtn.disabled = false;
+                }
+            };
+            
+            img.onerror = () => {
+                alert('Błąd podczas ładowania zdjęcia');
+                scanBtn.innerHTML = originalText;
+                scanBtn.disabled = false;
+            };
+            
+            img.src = this.capturedPhoto.src;
+            
+        } catch (error) {
+            console.error('Error scanning barcode:', error);
+            alert('Błąd podczas skanowania kodu');
+            
+            const scanBtn = document.getElementById('scanBarcode');
+            scanBtn.innerHTML = '🔍 Skanuj kod Aztec';
+            scanBtn.disabled = false;
+        }
+    }
+
+    displayBarcodeResults(results) {
+        const resultsContainer = document.getElementById('barcodeResults');
+        const scanResults = document.getElementById('scanResults');
+        
+        if (!results || !results.items || results.items.length === 0) {
+            resultsContainer.innerHTML = '<p style="color: #6c757d; font-style: italic; text-align: center; padding: 20px;">Nie znaleziono żadnych kodów na zdjęciu.</p>';
+            scanResults.style.display = 'block';
+            return;
+        }
+
+        let html = '';
+        results.items.forEach((item, index) => {
+            const confidence = Math.round(item.confidence || 0);
+            html += `
+                <div class="barcode-result">
+                    <div class="confidence">${confidence}%</div>
+                    <div class="format">Format: ${item.formatString || 'Unknown'}</div>
+                    <div class="text">${this.escapeHtml(item.text || '')}</div>
+                </div>
+            `;
+        });
+        
+        resultsContainer.innerHTML = html;
+        scanResults.style.display = 'block';
+        
+        document.getElementById('photoDescription').value = results.items[0].text || '';
+    }
+
+    clearBarcodeResults() {
+        document.getElementById('scanResults').style.display = 'none';
+        document.getElementById('barcodeResults').innerHTML = '';
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 

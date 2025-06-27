@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Photo App</title>
+    <title>Aztec Code Scanner</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@10.5.3000/dist/dbr.bundle.js"></script>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Photo Editor</h1>
+            <h1>Aztec Code Scanner</h1>
         </header>
 
         <main>
@@ -35,6 +36,20 @@
                 </div>
 
                 <!-- Photo Operations -->
+                <!-- Barcode Scanning Section -->
+                <div class="barcode-section">
+                    <h3>Skanowanie kodów Aztec:</h3>
+                    <div class="scan-controls">
+                        <button id="scanBarcode" class="btn btn-primary">🔍 Skanuj kod Aztec</button>
+                        <button id="clearResults" class="btn btn-secondary">🗑️ Wyczyść wyniki</button>
+                    </div>
+                    
+                    <div id="scanResults" class="scan-results" style="display: none;">
+                        <h4>Wyniki skanowania:</h4>
+                        <div id="barcodeResults"></div>
+                    </div>
+                </div>
+
                 <div class="photo-operations">
                     <h3>Operacje na zdjęciu:</h3>
                     <div class="operations-grid">

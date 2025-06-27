@@ -99,6 +99,85 @@ main {
     border-color: #667eea;
 }
 
+/* Barcode Scanning Section */
+.barcode-section {
+    margin: 30px 0;
+    padding: 25px;
+    background: #e8f5e8;
+    border-radius: 10px;
+    border: 2px solid #28a745;
+}
+
+.barcode-section h3 {
+    margin-bottom: 20px;
+    color: #155724;
+    font-size: 1.3rem;
+}
+
+.scan-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.scan-results {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid #28a745;
+}
+
+.scan-results h4 {
+    color: #155724;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+#barcodeResults {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.barcode-result {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.barcode-result .format {
+    font-weight: bold;
+    color: #28a745;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.barcode-result .text {
+    font-family: 'Courier New', monospace;
+    background: white;
+    padding: 10px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+    word-break: break-all;
+    font-size: 0.9rem;
+}
+
+.barcode-result .confidence {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #28a745;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
 /* Photo Operations */
 .photo-operations {
     margin: 30px 0;
