@@ -23,15 +23,6 @@ class PhotoApp {
             await Dynamsoft.License.LicenseManager.initLicense("DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0MjAxNjI2LU1UQTBNakF4TmpJMkxYZGxZaTFVY21saGJGQnliMm8iLCJtYWluU2VydmVyVVJMIjoiaHR0cHM6Ly9tZGxzLmR5bmFtc29mdG9ubGluZS5jb20iLCJvcmdhbml6YXRpb25JRCI6IjEwNDIwMTYyNiIsInN0YW5kYnlTZXJ2ZXJVUkwiOiJodHRwczovL3NkbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsImNoZWNrQ29kZSI6OTY0MDI1ODU3fQ==");
             
             this.cvRouter = await Dynamsoft.CVR.CaptureVisionRouter.createInstance();
-            this.cameraEnhancer = await Dynamsoft.DCE.CameraEnhancer.createInstance();
-            
-            this.cvRouter.setInput(this.cameraEnhancer);
-            
-            this.cvRouter.addResultReceiver({
-                onCapturedResultReceived: (result) => {
-                    this.displayLiveResults(result);
-                }
-            });
             
             console.log('Dynamsoft Barcode Reader initialized successfully');
         } catch (error) {
@@ -69,7 +60,7 @@ class PhotoApp {
     }
 
     async startLiveScanning() {
-        if (!this.cvRouter || !this.cameraEnhancer) {
+        if (!this.cvRouter) {
             alert('Skaner nie jest jeszcze gotowy. Spróbuj ponownie za chwilę.');
             return;
         }
@@ -79,15 +70,31 @@ class PhotoApp {
             startBtn.innerHTML = '<span class="loading"></span>Uruchamianie...';
             startBtn.disabled = true;
 
+            // Create camera enhancer with video element
+            const cameraView = await Dynamsoft.DCE.CameraView.createInstance();
+            this.cameraEnhancer = await Dynamsoft.DCE.CameraEnhancer.createInstance(cameraView);
+            
             await this.cameraEnhancer.open();
             
-            this.cameraEnhancer.getUIElement().style.width = '100%';
-            this.cameraEnhancer.getUIElement().style.height = 'auto';
-            this.cameraEnhancer.getUIElement().style.borderRadius = '10px';
+            // Replace video element with camera enhancer UI
+            const cameraContainer = document.querySelector('.camera-container');
+            const cameraUI = this.cameraEnhancer.getUIElement();
             
-            document.querySelector('.camera-container').appendChild(this.cameraEnhancer.getUIElement());
+            cameraUI.style.width = '100%';
+            cameraUI.style.borderRadius = '10px';
+            cameraUI.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
             
+            cameraContainer.appendChild(cameraUI);
             this.video.style.display = 'none';
+            
+            // Set up scanning
+            this.cvRouter.setInput(this.cameraEnhancer);
+            
+            this.cvRouter.addResultReceiver({
+                onCapturedResultReceived: (result) => {
+                    this.displayLiveResults(result);
+                }
+            });
             
             await this.cvRouter.startCapturing('ReadSingleBarcode');
             this.isScanning = true;
