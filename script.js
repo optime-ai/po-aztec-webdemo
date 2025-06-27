@@ -11,8 +11,8 @@ class PhotoApp {
         this.flipV = false;
         this.currentFilter = 'none';
         this.cvRouter = null;
-        this.cameraEnhancer = null;
-        this.isScanning = false;
+        this.autoScanInterval = null;
+        this.isAutoScanning = false;
         
         this.initializeDynamsoft();
         this.initializeEventListeners();
@@ -32,10 +32,10 @@ class PhotoApp {
 
     initializeEventListeners() {
         // Camera controls
-        document.getElementById('startCamera').addEventListener('click', () => this.startLiveScanning());
-        document.getElementById('stopScanning').addEventListener('click', () => this.stopLiveScanning());
+        document.getElementById('startCamera').addEventListener('click', () => this.startCamera());
         document.getElementById('takePhoto').addEventListener('click', () => this.takePhoto());
         document.getElementById('switchCamera').addEventListener('click', () => this.switchCamera());
+        document.getElementById('autoScan').addEventListener('click', () => this.toggleAutoScan());
         
         // Photo operations
         document.getElementById('rotateLeft').addEventListener('click', () => this.rotatePhoto(-90));
@@ -59,134 +59,129 @@ class PhotoApp {
         document.getElementById('clearResults').addEventListener('click', () => this.clearBarcodeResults());
     }
 
-    async startLiveScanning() {
-        if (!this.cvRouter) {
-            alert('Skaner nie jest jeszcze gotowy. Spróbuj ponownie za chwilę.');
-            return;
-        }
-
+    async startCamera() {
         try {
             const startBtn = document.getElementById('startCamera');
-            startBtn.innerHTML = '<span class="loading"></span>Uruchamianie...';
+            startBtn.innerHTML = '<span class="loading"></span>Łączenie...';
             startBtn.disabled = true;
 
-            // Create camera view element first
-            const cameraContainer = document.querySelector('.camera-container');
-            const cameraViewElement = document.createElement('div');
-            cameraViewElement.id = 'camera-view';
-            cameraViewElement.style.width = '100%';
-            cameraViewElement.style.height = 'auto';
-            cameraViewElement.style.borderRadius = '10px';
-            cameraViewElement.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
-            cameraViewElement.style.overflow = 'hidden';
-            
-            cameraContainer.appendChild(cameraViewElement);
-            this.video.style.display = 'none';
-
-            // Create camera view and enhancer
-            const cameraView = await Dynamsoft.DCE.CameraView.createInstance(cameraViewElement);
-            this.cameraEnhancer = await Dynamsoft.DCE.CameraEnhancer.createInstance(cameraView);
-            
-            await this.cameraEnhancer.open();
-            
-            // Set up scanning
-            this.cvRouter.setInput(this.cameraEnhancer);
-            
-            this.cvRouter.addResultReceiver({
-                onCapturedResultReceived: (result) => {
-                    this.displayLiveResults(result);
+            const constraints = {
+                video: {
+                    facingMode: this.currentFacingMode,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
                 }
-            });
+            };
+
+            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.video.srcObject = this.stream;
             
-            await this.cvRouter.startCapturing('ReadSingleBarcode');
-            this.isScanning = true;
-            
+            this.video.onloadedmetadata = () => {
+                this.canvas.width = this.video.videoWidth;
+                this.canvas.height = this.video.videoHeight;
+            };
+
+            // Show camera controls
+            startBtn.style.display = 'none';
+            document.getElementById('takePhoto').style.display = 'inline-block';
+            document.getElementById('switchCamera').style.display = 'inline-block';
+            document.getElementById('autoScan').style.display = 'inline-block';
             document.getElementById('scanOverlay').style.display = 'block';
             
-            startBtn.style.display = 'none';
-            document.getElementById('stopScanning').style.display = 'inline-block';
-            document.getElementById('switchCamera').style.display = 'inline-block';
-            document.getElementById('takePhoto').style.display = 'inline-block';
-            
         } catch (error) {
-            console.error('Błąd uruchamiania skanera:', error);
-            alert('Nie można uruchomić skanera. Sprawdź dostęp do kamery.');
+            console.error('Błąd dostępu do kamery:', error);
+            alert('Nie można uzyskać dostępu do kamery. Upewnij się, że zezwoliłeś na dostęp do kamery.');
             
             const startBtn = document.getElementById('startCamera');
-            startBtn.innerHTML = 'Włącz skaner';
+            startBtn.innerHTML = 'Włącz kamerę';
             startBtn.disabled = false;
         }
     }
 
-    async stopLiveScanning() {
-        try {
-            if (this.cvRouter && this.isScanning) {
-                await this.cvRouter.stopCapturing();
-                this.isScanning = false;
+    toggleAutoScan() {
+        const autoScanBtn = document.getElementById('autoScan');
+        
+        if (this.isAutoScanning) {
+            // Stop auto scanning
+            if (this.autoScanInterval) {
+                clearInterval(this.autoScanInterval);
+                this.autoScanInterval = null;
             }
-            
-            if (this.cameraEnhancer) {
-                await this.cameraEnhancer.close();
-                this.cameraEnhancer = null;
-            }
-            
-            // Remove camera view element
-            const cameraViewElement = document.getElementById('camera-view');
-            if (cameraViewElement) {
-                cameraViewElement.remove();
-            }
-            
-            this.video.style.display = 'block';
-            document.getElementById('scanOverlay').style.display = 'none';
+            this.isAutoScanning = false;
+            autoScanBtn.innerHTML = '🔄 Auto-skan: OFF';
+            autoScanBtn.className = 'btn btn-warning';
             document.getElementById('liveResults').innerHTML = '';
+        } else {
+            // Start auto scanning
+            this.isAutoScanning = true;
+            autoScanBtn.innerHTML = '⏹️ Auto-skan: ON';
+            autoScanBtn.className = 'btn btn-success';
             
-            document.getElementById('startCamera').style.display = 'inline-block';
-            document.getElementById('stopScanning').style.display = 'none';
-            document.getElementById('switchCamera').style.display = 'none';
-            document.getElementById('takePhoto').style.display = 'none';
+            this.autoScanInterval = setInterval(() => {
+                this.scanCurrentFrame();
+            }, 1000); // Skanuj co sekundę
+        }
+    }
+
+    async scanCurrentFrame() {
+        if (!this.cvRouter || !this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
+            return;
+        }
+
+        try {
+            // Capture current frame
+            this.canvas.width = this.video.videoWidth;
+            this.canvas.height = this.video.videoHeight;
+            this.ctx.drawImage(this.video, 0, 0);
+            
+            // Scan the frame
+            const results = await this.cvRouter.capture(this.canvas, 'ReadSingleBarcode');
+            this.displayLiveResults(results);
             
         } catch (error) {
-            console.error('Błąd zatrzymywania skanera:', error);
+            console.error('Błąd auto-skanowania:', error);
         }
     }
 
     async switchCamera() {
-        if (this.isScanning && this.cameraEnhancer) {
-            try {
-                const cameras = await this.cameraEnhancer.getAllCameras();
-                if (cameras.length > 1) {
-                    const currentCamera = this.cameraEnhancer.getSelectedCamera();
-                    const nextCameraIndex = (cameras.findIndex(cam => cam.deviceId === currentCamera.deviceId) + 1) % cameras.length;
-                    await this.cameraEnhancer.selectCamera(cameras[nextCameraIndex]);
-                }
-            } catch (error) {
-                console.error('Błąd przełączania kamery:', error);
-            }
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
         }
+        
+        this.currentFacingMode = this.currentFacingMode === 'user' ? 'environment' : 'user';
+        await this.startCamera();
     }
 
-    async takePhoto() {
-        if (this.isScanning && this.cameraEnhancer) {
-            try {
-                const frame = this.cameraEnhancer.fetchImage();
-                const canvas = frame.toCanvas();
-                this.capturedPhoto.src = canvas.toDataURL('image/jpeg', 0.9);
-                
-                // Reset transformations
-                this.rotation = 0;
-                this.flipH = false;
-                this.flipV = false;
-                this.currentFilter = 'none';
-                this.updatePhotoDisplay();
-                
-                // Stop scanning and show photo section
-                await this.stopLiveScanning();
-                document.querySelector('.camera-section').style.display = 'none';
-                document.querySelector('.photo-section').style.display = 'block';
-                
-            } catch (error) {
-                console.error('Błąd robienia zdjęcia:', error);
-                alert('Nie można zrobić zdjęcia');
+    takePhoto() {
+        if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
+            this.canvas.width = this.video.videoWidth;
+            this.canvas.height = this.video.videoHeight;
+            
+            this.ctx.drawImage(this.video, 0, 0);
+            
+            const imageDataUrl = this.canvas.toDataURL('image/jpeg', 0.9);
+            this.capturedPhoto.src = imageDataUrl;
+            
+            // Reset transformations
+            this.rotation = 0;
+            this.flipH = false;
+            this.flipV = false;
+            this.currentFilter = 'none';
+            this.updatePhotoDisplay();
+            
+            // Stop auto scanning
+            if (this.isAutoScanning) {
+                this.toggleAutoScan();
+            }
+            
+            // Show photo section and hide camera
+            document.querySelector('.camera-section').style.display = 'none';
+            document.querySelector('.photo-section').style.display = 'block';
+            
+            // Stop camera stream
+            if (this.stream) {
+                this.stream.getTracks().forEach(track => track.stop());
+                this.stream = null;
             }
         }
     }
@@ -319,19 +314,26 @@ class PhotoApp {
     }
 
     newPhoto() {
+        // Stop auto scanning if running
+        if (this.isAutoScanning) {
+            this.toggleAutoScan();
+        }
+        
         // Hide photo section and show camera section
         document.querySelector('.photo-section').style.display = 'none';
         document.querySelector('.camera-section').style.display = 'block';
         
         // Reset camera controls
         document.getElementById('startCamera').style.display = 'inline-block';
-        document.getElementById('stopScanning').style.display = 'none';
         document.getElementById('takePhoto').style.display = 'none';
         document.getElementById('switchCamera').style.display = 'none';
+        document.getElementById('autoScan').style.display = 'none';
+        document.getElementById('scanOverlay').style.display = 'none';
         
         // Clear photo description and scan results
         document.getElementById('photoDescription').value = '';
         this.clearBarcodeResults();
+        document.getElementById('liveResults').innerHTML = '';
         
         // Reset transformations
         this.rotation = 0;
