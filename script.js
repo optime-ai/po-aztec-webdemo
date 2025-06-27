@@ -70,22 +70,24 @@ class PhotoApp {
             startBtn.innerHTML = '<span class="loading"></span>Uruchamianie...';
             startBtn.disabled = true;
 
-            // Create camera enhancer with video element
-            const cameraView = await Dynamsoft.DCE.CameraView.createInstance();
+            // Create camera view element first
+            const cameraContainer = document.querySelector('.camera-container');
+            const cameraViewElement = document.createElement('div');
+            cameraViewElement.id = 'camera-view';
+            cameraViewElement.style.width = '100%';
+            cameraViewElement.style.height = 'auto';
+            cameraViewElement.style.borderRadius = '10px';
+            cameraViewElement.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
+            cameraViewElement.style.overflow = 'hidden';
+            
+            cameraContainer.appendChild(cameraViewElement);
+            this.video.style.display = 'none';
+
+            // Create camera view and enhancer
+            const cameraView = await Dynamsoft.DCE.CameraView.createInstance(cameraViewElement);
             this.cameraEnhancer = await Dynamsoft.DCE.CameraEnhancer.createInstance(cameraView);
             
             await this.cameraEnhancer.open();
-            
-            // Replace video element with camera enhancer UI
-            const cameraContainer = document.querySelector('.camera-container');
-            const cameraUI = this.cameraEnhancer.getUIElement();
-            
-            cameraUI.style.width = '100%';
-            cameraUI.style.borderRadius = '10px';
-            cameraUI.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
-            
-            cameraContainer.appendChild(cameraUI);
-            this.video.style.display = 'none';
             
             // Set up scanning
             this.cvRouter.setInput(this.cameraEnhancer);
@@ -125,10 +127,13 @@ class PhotoApp {
             
             if (this.cameraEnhancer) {
                 await this.cameraEnhancer.close();
-                const uiElement = this.cameraEnhancer.getUIElement();
-                if (uiElement && uiElement.parentNode) {
-                    uiElement.parentNode.removeChild(uiElement);
-                }
+                this.cameraEnhancer = null;
+            }
+            
+            // Remove camera view element
+            const cameraViewElement = document.getElementById('camera-view');
+            if (cameraViewElement) {
+                cameraViewElement.remove();
             }
             
             this.video.style.display = 'block';
@@ -164,7 +169,8 @@ class PhotoApp {
         if (this.isScanning && this.cameraEnhancer) {
             try {
                 const frame = this.cameraEnhancer.fetchImage();
-                this.capturedPhoto.src = frame.toCanvas().toDataURL('image/jpeg', 0.9);
+                const canvas = frame.toCanvas();
+                this.capturedPhoto.src = canvas.toDataURL('image/jpeg', 0.9);
                 
                 // Reset transformations
                 this.rotation = 0;
