@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aztec Code Scanner v2.3 - Auto + Back Cam</title>
+    <title>Aztec Code Scanner v2.4 - Polish Vehicle Registration</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@10.5.3000/dist/dbr.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -58,6 +59,11 @@
                     <div id="scanResults" class="scan-results" style="display: none;">
                         <h4>Wyniki skanowania:</h4>
                         <div id="barcodeResults"></div>
+                    </div>
+                    
+                    <div id="vehicleData" class="vehicle-data" style="display: none;">
+                        <h4>Dane pojazdu:</h4>
+                        <div id="vehicleInfo"></div>
                     </div>
                 </div>
 

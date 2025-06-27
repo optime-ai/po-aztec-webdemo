@@ -440,6 +440,8 @@ class PhotoApp {
     clearBarcodeResults() {
         document.getElementById('scanResults').style.display = 'none';
         document.getElementById('barcodeResults').innerHTML = '';
+        document.getElementById('vehicleData').style.display = 'none';
+        document.getElementById('vehicleInfo').innerHTML = '';
     }
 
     displayLiveResults(results) {
@@ -454,17 +456,244 @@ class PhotoApp {
         results.items.forEach((item, index) => {
             if (index < 3) { // Pokazuj maksymalnie 3 wyniki na żywo
                 const confidence = Math.round(item.confidence || 0);
+                
+                // Try to decode Polish vehicle registration data
+                const vehicleData = this.tryDecodeVehicleData(item.text);
+                
                 html += `
                     <div class="live-result">
                         <div class="confidence">${confidence}%</div>
                         <div class="format">${item.formatString || 'Unknown'}</div>
                         <div>${this.escapeHtml(item.text?.substring(0, 50) || '')}${item.text?.length > 50 ? '...' : ''}</div>
+                        ${vehicleData ? `<div style="color: #20c997; font-size: 10px; margin-top: 3px;">🚗 ${vehicleData.registrationNumber || 'Pojazd wykryty'}</div>` : ''}
                     </div>
                 `;
             }
         });
         
         liveResultsContainer.innerHTML = html;
+        
+        // Auto-display vehicle data if found
+        if (results.items.length > 0) {
+            const vehicleData = this.tryDecodeVehicleData(results.items[0].text);
+            if (vehicleData) {
+                this.displayVehicleData(vehicleData);
+            }
+        }
+    }
+
+    tryDecodeVehicleData(rawText) {
+        try {
+            // Format DBR result (remove prefix if present)
+            let cleanedText = rawText;
+            if (cleanedText.includes(' ')) {
+                cleanedText = cleanedText.split(' ')[1];
+            }
+            
+            return this.decodePolishVehicleData(cleanedText);
+        } catch (error) {
+            console.log('Not a Polish vehicle registration code:', error.message);
+            return null;
+        }
+    }
+
+    decodePolishVehicleData(aztecData) {
+        try {
+            // Step 1: Base64 decode
+            const binaryString = atob(aztecData);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            // Step 2: Skip first 4 bytes and try basic decompression
+            // Since UCL decompression is complex, we'll try a simpler approach first
+            const dataWithoutHeader = bytes.slice(4);
+            
+            // Try to decompress with pako (fallback)
+            let decompressed;
+            try {
+                decompressed = pako.inflate(dataWithoutHeader, {to: 'string'});
+            } catch (e) {
+                // If pako fails, try raw interpretation
+                decompressed = new TextDecoder('utf-16le').decode(dataWithoutHeader);
+            }
+            
+            // Step 3: Parse the pipe-separated data
+            const parts = decompressed.split('|');
+            if (parts.length < 66) {
+                throw new Error(`Invalid data format: expected at least 66 parts, got ${parts.length}`);
+            }
+            
+            // Step 4: Map to structured data
+            return this.mapVehicleFields(parts);
+            
+        } catch (error) {
+            throw new Error(`Failed to decode vehicle data: ${error.message}`);
+        }
+    }
+
+    mapVehicleFields(parts) {
+        const fieldMapping = {
+            7: "registrationNumber",
+            8: "brand",
+            9: "type", 
+            10: "variant",
+            11: "version",
+            12: "model",
+            13: "vin",
+            14: "certificateReleaseDate",
+            15: "validity",
+            16: "holderFullName",
+            17: "holderFirstName", 
+            18: "holderLastName",
+            19: "holderName",
+            20: "holderPesel",
+            21: "holderZipCode",
+            22: "holderCity",
+            24: "holderStreetName",
+            25: "holderHouseNumber",
+            26: "holderApartmentNumber",
+            27: "ownerFullName",
+            28: "ownerFirstName",
+            29: "ownerLastName", 
+            30: "ownerName",
+            31: "ownerPesel",
+            32: "ownerZipCode",
+            33: "ownerCity",
+            35: "ownerStreetName",
+            36: "ownerHouseNumber",
+            37: "ownerApartmentNumber",
+            38: "vehicleMaxTotalWeight",
+            39: "vehicleAllowedTotalWeight",
+            40: "vehicleCombinationAllowedTotalWeight",
+            41: "vehicleWeight",
+            42: "vehicleCategory",
+            43: "approvalCertificateNumber",
+            44: "axlesNumber",
+            45: "trailerMaxWeightWithBrakes",
+            46: "trailerMaxWeightWithoutBrakes",
+            47: "powerToWeightRatio",
+            48: "engineCapacity",
+            49: "enginePower",
+            50: "fuelType",
+            51: "firstRegistrationDate",
+            52: "numberOfSeats",
+            53: "numberOfStandingPlaces",
+            54: "vehicleType",
+            55: "purpose",
+            56: "productionYear",
+            57: "allowedPackageWeight",
+            58: "maxAllowedAxlePressure",
+            59: "vehicleCardNumber"
+        };
+        
+        const mappedData = {};
+        for (const [index, fieldName] of Object.entries(fieldMapping)) {
+            mappedData[fieldName] = parts[parseInt(index)] || '';
+        }
+        
+        return mappedData;
+    }
+
+    displayVehicleData(vehicleData) {
+        const vehicleDataSection = document.getElementById('vehicleData');
+        const vehicleInfoContainer = document.getElementById('vehicleInfo');
+        
+        const html = `
+            <div class="vehicle-info-grid">
+                <div class="vehicle-section">
+                    <h5>🚗 Pojazd</h5>
+                    <div class="vehicle-field">
+                        <span class="label">Nr rejestracyjny:</span>
+                        <span class="value">${vehicleData.registrationNumber || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Marka:</span>
+                        <span class="value">${vehicleData.brand || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Model:</span>
+                        <span class="value">${vehicleData.model || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">VIN:</span>
+                        <span class="value">${vehicleData.vin || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Rok produkcji:</span>
+                        <span class="value">${vehicleData.productionYear || '-'}</span>
+                    </div>
+                </div>
+                
+                <div class="vehicle-section">
+                    <h5>🔧 Dane techniczne</h5>
+                    <div class="vehicle-field">
+                        <span class="label">Kategoria:</span>
+                        <span class="value">${vehicleData.vehicleCategory || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Masa pojazdu:</span>
+                        <span class="value">${vehicleData.vehicleWeight || '-'} kg</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Pojemność silnika:</span>
+                        <span class="value">${vehicleData.engineCapacity || '-'} cm³</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Moc silnika:</span>
+                        <span class="value">${vehicleData.enginePower || '-'} kW</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Rodzaj paliwa:</span>
+                        <span class="value">${vehicleData.fuelType || '-'}</span>
+                    </div>
+                </div>
+                
+                <div class="vehicle-section">
+                    <h5>👤 Właściciel</h5>
+                    <div class="vehicle-field">
+                        <span class="label">Imię i nazwisko:</span>
+                        <span class="value">${vehicleData.ownerFullName || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">PESEL:</span>
+                        <span class="value">${vehicleData.ownerPesel || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Miasto:</span>
+                        <span class="value">${vehicleData.ownerCity || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Kod pocztowy:</span>
+                        <span class="value">${vehicleData.ownerZipCode || '-'}</span>
+                    </div>
+                </div>
+                
+                <div class="vehicle-section">
+                    <h5>📋 Posiadacz</h5>
+                    <div class="vehicle-field">
+                        <span class="label">Imię i nazwisko:</span>
+                        <span class="value">${vehicleData.holderFullName || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">PESEL:</span>
+                        <span class="value">${vehicleData.holderPesel || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Miasto:</span>
+                        <span class="value">${vehicleData.holderCity || '-'}</span>
+                    </div>
+                    <div class="vehicle-field">
+                        <span class="label">Kod pocztowy:</span>
+                        <span class="value">${vehicleData.holderZipCode || '-'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        vehicleInfoContainer.innerHTML = html;
+        vehicleDataSection.style.display = 'block';
     }
 
     escapeHtml(text) {
