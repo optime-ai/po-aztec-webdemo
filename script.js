@@ -5,7 +5,7 @@ class PhotoApp {
         this.ctx = this.canvas.getContext('2d');
         this.capturedPhoto = document.getElementById('capturedPhoto');
         this.stream = null;
-        this.currentFacingMode = 'user';
+        this.currentFacingMode = 'environment';
         this.rotation = 0;
         this.flipH = false;
         this.flipV = false;
@@ -88,6 +88,13 @@ class PhotoApp {
             document.getElementById('autoScan').style.display = 'inline-block';
             document.getElementById('scanOverlay').style.display = 'block';
             
+            // Auto-start scanning
+            setTimeout(() => {
+                if (!this.isAutoScanning) {
+                    this.toggleAutoScan();
+                }
+            }, 1000);
+            
         } catch (error) {
             console.error('Błąd dostępu do kamery:', error);
             alert('Nie można uzyskać dostępu do kamery. Upewnij się, że zezwoliłeś na dostęp do kamery.');
@@ -148,7 +155,7 @@ class PhotoApp {
             this.stream.getTracks().forEach(track => track.stop());
         }
         
-        this.currentFacingMode = this.currentFacingMode === 'user' ? 'environment' : 'user';
+        this.currentFacingMode = this.currentFacingMode === 'environment' ? 'user' : 'environment';
         await this.startCamera();
     }
 
