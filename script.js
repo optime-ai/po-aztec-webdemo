@@ -490,45 +490,103 @@ class PhotoApp {
                 cleanedText = cleanedText.split(' ')[1];
             }
             
-            return this.decodePolishVehicleData(cleanedText);
+            console.log('Trying to decode:', cleanedText.substring(0, 50) + '...');
+            const result = this.decodePolishVehicleData(cleanedText);
+            console.log('Decoded successfully:', result);
+            return result;
         } catch (error) {
-            console.log('Not a Polish vehicle registration code:', error.message);
+            console.log('Decode failed:', error.message);
+            console.log('Raw text length:', rawText.length);
+            console.log('Cleaned text length:', cleanedText.length);
             return null;
         }
     }
 
     decodePolishVehicleData(aztecData) {
         try {
+            console.log('Step 1: Base64 decode...');
             // Step 1: Base64 decode
             const binaryString = atob(aztecData);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
+            console.log('Base64 decoded, bytes length:', bytes.length);
             
-            // Step 2: Skip first 4 bytes and try basic decompression
-            // Since UCL decompression is complex, we'll try a simpler approach first
+            // Step 2: Skip first 4 bytes 
             const dataWithoutHeader = bytes.slice(4);
+            console.log('After header removal, data length:', dataWithoutHeader.length);
+            console.log('First 20 bytes:', Array.from(dataWithoutHeader.slice(0, 20)));
             
-            // Try to decompress with pako (fallback)
-            let decompressed;
+            // Try multiple decompression approaches
+            let decompressed = null;
+            let method = 'unknown';
+            
+            // Approach 1: Try pako inflate
             try {
                 decompressed = pako.inflate(dataWithoutHeader, {to: 'string'});
+                method = 'pako-inflate';
+                console.log('Pako inflate success');
             } catch (e) {
-                // If pako fails, try raw interpretation
-                decompressed = new TextDecoder('utf-16le').decode(dataWithoutHeader);
+                console.log('Pako inflate failed:', e.message);
             }
+            
+            // Approach 2: Try pako inflateRaw
+            if (!decompressed) {
+                try {
+                    decompressed = pako.inflateRaw(dataWithoutHeader, {to: 'string'});
+                    method = 'pako-inflateRaw';
+                    console.log('Pako inflateRaw success');
+                } catch (e) {
+                    console.log('Pako inflateRaw failed:', e.message);
+                }
+            }
+            
+            // Approach 3: Try direct UTF-16LE decoding
+            if (!decompressed) {
+                try {
+                    decompressed = new TextDecoder('utf-16le').decode(dataWithoutHeader);
+                    method = 'utf-16le-direct';
+                    console.log('Direct UTF-16LE success');
+                } catch (e) {
+                    console.log('Direct UTF-16LE failed:', e.message);
+                }
+            }
+            
+            // Approach 4: Try UTF-8 decoding
+            if (!decompressed) {
+                try {
+                    decompressed = new TextDecoder('utf-8').decode(dataWithoutHeader);
+                    method = 'utf-8-direct';
+                    console.log('Direct UTF-8 success');
+                } catch (e) {
+                    console.log('Direct UTF-8 failed:', e.message);
+                }
+            }
+            
+            if (!decompressed) {
+                throw new Error('All decompression methods failed');
+            }
+            
+            console.log('Decompression successful using:', method);
+            console.log('Decompressed length:', decompressed.length);
+            console.log('First 100 chars:', decompressed.substring(0, 100));
             
             // Step 3: Parse the pipe-separated data
             const parts = decompressed.split('|');
-            if (parts.length < 66) {
-                throw new Error(`Invalid data format: expected at least 66 parts, got ${parts.length}`);
+            console.log('Split into parts:', parts.length);
+            
+            if (parts.length < 10) {
+                throw new Error(`Invalid data format: expected at least 10 parts, got ${parts.length}. Sample: ${decompressed.substring(0, 200)}`);
             }
             
             // Step 4: Map to structured data
-            return this.mapVehicleFields(parts);
+            const mapped = this.mapVehicleFields(parts);
+            console.log('Mapping successful');
+            return mapped;
             
         } catch (error) {
+            console.error('Decode error details:', error);
             throw new Error(`Failed to decode vehicle data: ${error.message}`);
         }
     }
