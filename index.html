@@ -16,13 +16,24 @@
         <main>
             <!-- Camera Section -->
             <section class="camera-section">
-                <video id="video" autoplay playsinline></video>
-                <canvas id="canvas" style="display: none;"></canvas>
+                <div class="camera-container">
+                    <video id="video" autoplay playsinline></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    
+                    <!-- Live scan overlay -->
+                    <div id="scanOverlay" class="scan-overlay" style="display: none;">
+                        <div class="scan-frame"></div>
+                        <div class="scan-results-live">
+                            <div id="liveResults"></div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="camera-controls">
-                    <button id="startCamera" class="btn btn-primary">Włącz kamerę</button>
-                    <button id="takePhoto" class="btn btn-success" style="display: none;">Zrób zdjęcie</button>
+                    <button id="startCamera" class="btn btn-primary">Włącz skaner</button>
+                    <button id="stopScanning" class="btn btn-danger" style="display: none;">Zatrzymaj skaner</button>
                     <button id="switchCamera" class="btn btn-secondary" style="display: none;">Przełącz kamerę</button>
+                    <button id="takePhoto" class="btn btn-success" style="display: none;">Zrób zdjęcie</button>
                 </div>
             </section>
 

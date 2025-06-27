@@ -42,13 +42,93 @@ main {
     margin-bottom: 30px;
 }
 
+.camera-container {
+    position: relative;
+    display: inline-block;
+    max-width: 600px;
+    width: 100%;
+}
+
 #video {
     width: 100%;
-    max-width: 600px;
     height: auto;
     border-radius: 10px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     margin-bottom: 20px;
+}
+
+/* Live Scan Overlay */
+.scan-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 20px;
+    pointer-events: none;
+    border-radius: 10px;
+}
+
+.scan-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    border: 3px solid #28a745;
+    border-radius: 10px;
+    box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.3);
+    animation: scanPulse 2s infinite;
+}
+
+@keyframes scanPulse {
+    0%, 100% { border-color: #28a745; }
+    50% { border-color: #20c997; }
+}
+
+.scan-results-live {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 14px;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.live-result {
+    background: rgba(40, 167, 69, 0.2);
+    border: 1px solid #28a745;
+    border-radius: 5px;
+    padding: 8px;
+    margin-bottom: 5px;
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+    font-size: 12px;
+}
+
+.live-result:last-child {
+    margin-bottom: 0;
+}
+
+.live-result .format {
+    color: #20c997;
+    font-weight: bold;
+    font-size: 11px;
+    margin-bottom: 3px;
+}
+
+.live-result .confidence {
+    float: right;
+    background: #28a745;
+    color: white;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 10px;
 }
 
 .camera-controls {
@@ -259,6 +339,16 @@ main {
 
 .btn-secondary:hover {
     background: #5a6268;
+    transform: translateY(-2px);
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
     transform: translateY(-2px);
 }
 
