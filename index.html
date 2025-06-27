@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Photo Editor</h1>
+        </header>
+
+        <main>
+            <!-- Camera Section -->
+            <section class="camera-section">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas" style="display: none;"></canvas>
+                
+                <div class="camera-controls">
+                    <button id="startCamera" class="btn btn-primary">Włącz kamerę</button>
+                    <button id="takePhoto" class="btn btn-success" style="display: none;">Zrób zdjęcie</button>
+                    <button id="switchCamera" class="btn btn-secondary" style="display: none;">Przełącz kamerę</button>
+                </div>
+            </section>
+
+            <!-- Photo Display Section -->
+            <section class="photo-section" style="display: none;">
+                <div class="photo-container">
+                    <img id="capturedPhoto" alt="Zrobione zdjęcie">
+                    <div class="photo-text">
+                        <textarea id="photoDescription" placeholder="Dodaj opis do zdjęcia..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Photo Operations -->
+                <div class="photo-operations">
+                    <h3>Operacje na zdjęciu:</h3>
+                    <div class="operations-grid">
+                        <button id="rotateLeft" class="btn btn-operation">↻ Obróć w lewo</button>
+                        <button id="rotateRight" class="btn btn-operation">↺ Obróć w prawo</button>
+                        <button id="flipHorizontal" class="btn btn-operation">⟷ Odbij poziomo</button>
+                        <button id="flipVertical" class="btn btn-operation">↕ Odbij pionowo</button>
+                    </div>
+                    
+                    <div class="filters">
+                        <h4>Filtry:</h4>
+                        <div class="filter-controls">
+                            <button id="filterNone" class="btn btn-filter active">Brak</button>
+                            <button id="filterGrayscale" class="btn btn-filter">Czarno-białe</button>
+                            <button id="filterSepia" class="btn btn-filter">Sepia</button>
+                            <button id="filterBlur" class="btn btn-filter">Rozmycie</button>
+                            <button id="filterBright" class="btn btn-filter">Jasność</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="photo-actions">
+                    <button id="downloadPhoto" class="btn btn-success">📥 Pobierz zdjęcie</button>
+                    <button id="newPhoto" class="btn btn-primary">📷 Nowe zdjęcie</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
