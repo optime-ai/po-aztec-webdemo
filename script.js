@@ -13,6 +13,7 @@ class PhotoApp {
         this.cvRouter = null;
         this.autoScanInterval = null;
         this.isAutoScanning = false;
+        this.lastScannedCode = null;
         
         this.initializeDynamsoft();
         this.initializeEventListeners();
@@ -56,6 +57,7 @@ class PhotoApp {
         
         // Barcode scanning
         document.getElementById('scanBarcode').addEventListener('click', () => this.scanBarcode());
+        document.getElementById('decodeVehicle').addEventListener('click', () => this.decodeVehicleManual());
         document.getElementById('clearResults').addEventListener('click', () => this.clearBarcodeResults());
     }
 
@@ -435,6 +437,10 @@ class PhotoApp {
         scanResults.style.display = 'block';
         
         document.getElementById('photoDescription').value = results.items[0].text || '';
+        
+        // Store last scanned code and show decode button
+        this.lastScannedCode = results.items[0].text || '';
+        document.getElementById('decodeVehicle').style.display = 'inline-block';
     }
 
     clearBarcodeResults() {
@@ -442,6 +448,23 @@ class PhotoApp {
         document.getElementById('barcodeResults').innerHTML = '';
         document.getElementById('vehicleData').style.display = 'none';
         document.getElementById('vehicleInfo').innerHTML = '';
+        document.getElementById('decodeVehicle').style.display = 'none';
+        this.lastScannedCode = null;
+    }
+    
+    decodeVehicleManual() {
+        if (!this.lastScannedCode) {
+            alert('Najpierw zeskanuj kod!');
+            return;
+        }
+        
+        const vehicleData = this.tryDecodeVehicleData(this.lastScannedCode);
+        if (vehicleData) {
+            this.displayVehicleData(vehicleData);
+            alert('Dane pojazdu zdekodowane pomyślnie!');
+        } else {
+            alert('To nie jest kod dowodu rejestracyjnego pojazdu lub nie udało się zdekodować danych.');
+        }
     }
 
     displayLiveResults(results) {
@@ -457,15 +480,11 @@ class PhotoApp {
             if (index < 3) { // Pokazuj maksymalnie 3 wyniki na żywo
                 const confidence = Math.round(item.confidence || 0);
                 
-                // Try to decode Polish vehicle registration data
-                const vehicleData = this.tryDecodeVehicleData(item.text);
-                
                 html += `
                     <div class="live-result">
                         <div class="confidence">${confidence}%</div>
                         <div class="format">${item.formatString || 'Unknown'}</div>
                         <div>${this.escapeHtml(item.text?.substring(0, 50) || '')}${item.text?.length > 50 ? '...' : ''}</div>
-                        ${vehicleData ? `<div style="color: #20c997; font-size: 10px; margin-top: 3px;">🚗 ${vehicleData.registrationNumber || 'Pojazd wykryty'}</div>` : ''}
                     </div>
                 `;
             }
@@ -473,12 +492,9 @@ class PhotoApp {
         
         liveResultsContainer.innerHTML = html;
         
-        // Auto-display vehicle data if found
+        // Store last scanned result
         if (results.items.length > 0) {
-            const vehicleData = this.tryDecodeVehicleData(results.items[0].text);
-            if (vehicleData) {
-                this.displayVehicleData(vehicleData);
-            }
+            this.lastScannedCode = results.items[0].text;
         }
     }
 
