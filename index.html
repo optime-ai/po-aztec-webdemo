@@ -3,18 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aztec Code Scanner v2.6 - Simple Decode</title>
+    <title>Scanner v4.0 - Minimal</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@10.5.3000/dist/dbr.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Polski Skaner Dowodów Rejestracyjnych</h1>
-            <p style="color: white; font-size: 1.2rem; margin-top: -10px;">Wersja 3.0 - Simple Solution</p>
-        </header>
-
         <main>
             <!-- Camera Section -->
             <section class="camera-section">
@@ -32,72 +27,12 @@
                 </div>
                 
                 <div class="camera-controls">
-                    <button id="startCamera" class="btn btn-primary">Włącz kamerę</button>
-                    <button id="switchCamera" class="btn btn-secondary" style="display: none;">Przełącz kamerę</button>
-                    <button id="takePhoto" class="btn btn-success" style="display: none;">Zrób zdjęcie</button>
-                    <button id="autoScan" class="btn btn-warning" style="display: none;">🔄 Auto-skan: OFF</button>
-                </div>
-            </section>
-
-            <!-- Photo Display Section -->
-            <section class="photo-section" style="display: none;">
-                <div class="photo-container">
-                    <img id="capturedPhoto" alt="Zrobione zdjęcie">
-                    <div class="photo-text">
-                        <textarea id="photoDescription" placeholder="Dodaj opis do zdjęcia..."></textarea>
-                    </div>
-                </div>
-
-                <!-- Photo Operations -->
-                <!-- Barcode Scanning Section -->
-                <div class="barcode-section">
-                    <h3>Skanowanie kodów Aztec:</h3>
-                    <div class="scan-controls">
-                        <button id="scanBarcode" class="btn btn-primary">🔍 Skanuj kod Aztec</button>
-                        <button id="decodeVehicle" class="btn btn-success" style="display: none;">🚗 Dekoduj dane pojazdu</button>
-                        <button id="clearResults" class="btn btn-secondary">🗑️ Wyczyść wyniki</button>
-                    </div>
-                    
-                    <div id="scanResults" class="scan-results" style="display: none;">
-                        <h4>Wyniki skanowania:</h4>
-                        <div id="barcodeResults"></div>
-                    </div>
-                    
-                    <div id="vehicleData" class="vehicle-data" style="display: none;">
-                        <h4>Dane pojazdu:</h4>
-                        <div id="vehicleInfo"></div>
-                    </div>
-                </div>
-
-                <div class="photo-operations">
-                    <h3>Operacje na zdjęciu:</h3>
-                    <div class="operations-grid">
-                        <button id="rotateLeft" class="btn btn-operation">↻ Obróć w lewo</button>
-                        <button id="rotateRight" class="btn btn-operation">↺ Obróć w prawo</button>
-                        <button id="flipHorizontal" class="btn btn-operation">⟷ Odbij poziomo</button>
-                        <button id="flipVertical" class="btn btn-operation">↕ Odbij pionowo</button>
-                    </div>
-                    
-                    <div class="filters">
-                        <h4>Filtry:</h4>
-                        <div class="filter-controls">
-                            <button id="filterNone" class="btn btn-filter active">Brak</button>
-                            <button id="filterGrayscale" class="btn btn-filter">Czarno-białe</button>
-                            <button id="filterSepia" class="btn btn-filter">Sepia</button>
-                            <button id="filterBlur" class="btn btn-filter">Rozmycie</button>
-                            <button id="filterBright" class="btn btn-filter">Jasność</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="photo-actions">
-                    <button id="downloadPhoto" class="btn btn-success">📥 Pobierz zdjęcie</button>
-                    <button id="newPhoto" class="btn btn-primary">📷 Nowe zdjęcie</button>
+                    <button id="startCamera" class="btn btn-primary">ROZPOCZNIJ SKANOWANIE</button>
                 </div>
             </section>
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script-minimal.js"></script>
 </body>
 </html>
