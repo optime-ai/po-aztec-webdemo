@@ -485,21 +485,33 @@ class PhotoApp {
         }
 
         let html = '';
-        results.items.forEach((item, index) => {
-            if (index < 3) { // Pokazuj maksymalnie 3 wyniki na żywo
-                const confidence = Math.round(item.confidence || 0);
-                
-                html += `
-                    <div class="live-result">
-                        <div class="confidence">${confidence}%</div>
-                        <div class="format">${item.formatString || 'Unknown'}</div>
-                        <div>${this.escapeHtml(item.text?.substring(0, 50) || '')}${item.text?.length > 50 ? '...' : ''}</div>
-                    </div>
-                `;
+        let foundVehicleData = null;
+        
+        results.items.forEach((item) => {
+            const confidence = Math.round(item.confidence || 0);
+            
+            // Try to decode vehicle data live
+            const vehicleData = this.tryDecodeVehicleData(item.text);
+            if (vehicleData && !foundVehicleData) {
+                foundVehicleData = vehicleData;
             }
+            
+            html += `
+                <div class="live-result">
+                    <div class="confidence">${confidence}%</div>
+                    <div class="format">${item.formatString || 'Unknown'}</div>
+                    <div>${this.escapeHtml(item.text?.substring(0, 50) || '')}${item.text?.length > 50 ? '...' : ''}</div>
+                    ${vehicleData ? `<div style="color: #20c997; font-size: 10px; margin-top: 3px;">🚗 ${vehicleData.registrationNumber}</div>` : ''}
+                </div>
+            `;
         });
         
         liveResultsContainer.innerHTML = html;
+        
+        // Auto-display vehicle data if found
+        if (foundVehicleData) {
+            this.displayVehicleData(foundVehicleData);
+        }
         
         // Store last scanned result
         if (results.items.length > 0) {
@@ -529,47 +541,99 @@ class PhotoApp {
 
     decodePolishVehicleData(aztecData) {
         try {
-            // For testing - use the provided decoded string directly
-            const testDecodedString = `uQQAANtYAAJDAP8xAHwAQgBBAP5VADAAOAAz7QoiNd0ANiqnDjSeNTntMh5Q/wBSAEUAWgBZ3wBEDk4A/1QAIABNAC4AvVMSLu8WV4pSexpaDt5XSnztThZJe1ZMWt5J1kH9SnsBT+8eSeZPe1paSvdVAEx/t3JBAU97i1JfS29HdkYuBQYveP81My37GjIAN9tHQXY+CrxYLjUdajTvXkMiVH6GUwBM+zswAt4zDkj3gkxyBuu9UQYx70I1UjF2fia8TeJEHmMg91tTXlcSRffmRlK/MB5DADB9yzjvAjlGMnkeMu8tD+8tADJzvi0DfAyrHlfnC7NPUkN7yk4y9lUATSPhTe0LSknDAFK3Gz5DUC/vWgZPywAudBNENq/BooNeD4MXQh1zfGwDWocxDl8NNzgHV2gCN3xHfBZf7kc5AHwYow2hI7hGHjeTQwBJfC9LXqdILtpO8BfuG0EAfArvorsy12wTDDOGwOapBjb3500LwWUGwSo7HS8+4yrtMiI5e2oqBt4zk+tzMIdwN3Gr0sPCD+CLVtIsS/pFAEUgNzfrUTU/Fo3rQwea08MARNPvUwZCOqWLgb9Et0g3TywAM2Cfw+egOeCKObtfNg9uV742PzOrl4J8ozY/WgJOQtkzsTkL3jFbEkkkklT/kg==R`;
+            console.log('Decoding Aztec data, length:', aztecData.length);
             
-            // This is the actual decoded string from the Python version
-            // It contains UTF-16LE encoded data with special characters
+            // Step 1: Base64 decode
+            const binaryString = atob(aztecData);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            console.log('Base64 decoded to', bytes.length, 'bytes');
             
-            // Convert the string to proper format
-            let decodedData = testDecodedString;
+            // Step 2: Skip first 4 bytes (UCL header)
+            const dataWithoutHeader = bytes.slice(4);
+            console.log('After header removal:', dataWithoutHeader.length, 'bytes');
             
-            // Look for patterns - the data contains "0835" which might be part of registration
-            // "BA" might be brand code, etc.
+            // Step 3: Try to decode as UTF-16LE (since Python uses UCS-2LE)
+            let decodedText = '';
+            try {
+                decodedText = new TextDecoder('utf-16le').decode(dataWithoutHeader);
+                console.log('UTF-16LE decode successful');
+            } catch (e) {
+                // Try UTF-8 as fallback
+                decodedText = new TextDecoder('utf-8').decode(dataWithoutHeader);
+                console.log('UTF-8 decode fallback used');
+            }
             
-            console.log('Working with decoded string length:', decodedData.length);
+            console.log('Decoded text length:', decodedText.length);
+            console.log('First 200 chars:', decodedText.substring(0, 200));
             
-            // Extract visible ASCII parts
-            const matches = decodedData.match(/[A-Z0-9]{2,}/g) || [];
-            console.log('Found patterns:', matches);
+            // Step 4: Split by pipe character
+            const parts = decodedText.split('|');
+            console.log('Split into', parts.length, 'parts');
+            console.log('First 10 parts:', parts.slice(0, 10));
             
-            // Based on the visible patterns in the decoded string:
-            // "BA" "0835" "REZY" "M" etc.
+            if (parts.length < 10) {
+                throw new Error('Invalid format: not enough parts');
+            }
+            
+            // Step 5: Map fields according to Python mapping
             const vehicleData = {
-                registrationNumber: matches.find(m => m.includes("0835")) || "WBA0835",
-                brand: "BMW", // BA code
-                model: "SERIA 5",
-                vin: "WBABA0835" + "0000000", // Partial VIN visible
-                productionYear: "2023",
-                vehicleCategory: "M1", // Found "M" in data
-                vehicleWeight: "1850",
-                engineCapacity: "1998",
-                enginePower: "140",
-                fuelType: "BENZYNA",
-                ownerFullName: "JAN KOWALSKI",
-                ownerPesel: "***********",
-                ownerCity: "WARSZAWA", 
-                ownerZipCode: "02-000",
-                holderFullName: "JAN KOWALSKI",
-                holderCity: "WARSZAWA",
-                holderZipCode: "02-000"
+                registrationNumber: parts[7] || 'BRAK',
+                brand: parts[8] || 'BRAK',
+                type: parts[9] || 'BRAK',
+                variant: parts[10] || 'BRAK',
+                version: parts[11] || 'BRAK',
+                model: parts[12] || 'BRAK',
+                vin: parts[13] || 'BRAK',
+                certificateReleaseDate: parts[14] || 'BRAK',
+                validity: parts[15] || 'BRAK',
+                holderFullName: parts[16] || 'BRAK',
+                holderFirstName: parts[17] || 'BRAK',
+                holderLastName: parts[18] || 'BRAK',
+                holderName: parts[19] || 'BRAK',
+                holderPesel: parts[20] || 'BRAK',
+                holderZipCode: parts[21] || 'BRAK',
+                holderCity: parts[22] || 'BRAK',
+                holderStreetName: parts[24] || 'BRAK',
+                holderHouseNumber: parts[25] || 'BRAK',
+                holderApartmentNumber: parts[26] || 'BRAK',
+                ownerFullName: parts[27] || 'BRAK',
+                ownerFirstName: parts[28] || 'BRAK',
+                ownerLastName: parts[29] || 'BRAK',
+                ownerName: parts[30] || 'BRAK',
+                ownerPesel: parts[31] || 'BRAK',
+                ownerZipCode: parts[32] || 'BRAK',
+                ownerCity: parts[33] || 'BRAK',
+                ownerStreetName: parts[35] || 'BRAK',
+                ownerHouseNumber: parts[36] || 'BRAK',
+                ownerApartmentNumber: parts[37] || 'BRAK',
+                vehicleMaxTotalWeight: parts[38] || 'BRAK',
+                vehicleAllowedTotalWeight: parts[39] || 'BRAK',
+                vehicleCombinationAllowedTotalWeight: parts[40] || 'BRAK',
+                vehicleWeight: parts[41] || 'BRAK',
+                vehicleCategory: parts[42] || 'BRAK',
+                approvalCertificateNumber: parts[43] || 'BRAK',
+                axlesNumber: parts[44] || 'BRAK',
+                trailerMaxWeightWithBrakes: parts[45] || 'BRAK',
+                trailerMaxWeightWithoutBrakes: parts[46] || 'BRAK',
+                powerToWeightRatio: parts[47] || 'BRAK',
+                engineCapacity: parts[48] || 'BRAK',
+                enginePower: parts[49] || 'BRAK',
+                fuelType: parts[50] || 'BRAK',
+                firstRegistrationDate: parts[51] || 'BRAK',
+                numberOfSeats: parts[52] || 'BRAK',
+                numberOfStandingPlaces: parts[53] || 'BRAK',
+                vehicleType: parts[54] || 'BRAK',
+                purpose: parts[55] || 'BRAK',
+                productionYear: parts[56] || 'BRAK',
+                allowedPackageWeight: parts[57] || 'BRAK',
+                maxAllowedAxlePressure: parts[58] || 'BRAK',
+                vehicleCardNumber: parts[59] || 'BRAK'
             };
             
-            console.log('Parsed vehicle data:', vehicleData);
+            console.log('Successfully mapped vehicle data:', vehicleData);
             return vehicleData;
             
         } catch (error) {
